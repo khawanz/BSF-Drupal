@@ -1,0 +1,5 @@
+name = Input Display
+description = Menyediakan fitur input pembayaran mahasiswa
+core = 7.x
+package = BIG
+dependencies[] = date_popup

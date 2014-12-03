@@ -1,0 +1,4 @@
+name = BIG Sync
+description = Handle all synchronization with BIG.
+package = BIG
+core = 7.x

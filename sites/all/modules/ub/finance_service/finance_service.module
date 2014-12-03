@@ -1,0 +1,123 @@
+<?php
+//Akses service: http://[domain.com]/keuangan/retrieve/getKeuanganByBigIdSta
+//parameter: big_id, sta
+//example, {"big_id" : 123,
+//          "sta" : "1301"}
+
+function finance_service_services_resources() {
+  return array(
+   'retrieve' => array(
+    'actions' => array(
+     'getKeuanganByBigIdSta' => array(
+       'help' => 'Mengambil content type KEUANGAN',
+       //'file' => array('file' => 'inc', 'module' => 'ap_vsite_server'),
+       'callback' => '_get_keuangan_by_bigid_sta',
+       'access callback' => '_retrieve_access',
+       'access arguments' => array('view'),
+       'access arguments append' => TRUE,
+       'args' => array(
+         array(
+           'name' => 'big_id',
+           'type' => 'int',
+           'description' => 'ID Mahasiswa di BIG',
+           'source' => array('data' => 'big_id'),
+           'optional' => FALSE,
+         ),
+         array(
+           'name' => 'sta',
+           'type' => 'string',
+           'description' => 'Semester mahasiswa',
+           'source' => array('data' => 'sta'),
+           'optional' => FALSE,
+         ),
+       ),
+     ),
+    ),
+   )
+  );
+}
+
+function _get_keuangan_by_bigid_sta($big_id, $sta){
+    $sta_tahun = '20'.substr($sta, 0, 2);
+    $sta_semester = substr($sta, -1, 1);
+    $query1 = new EntityFieldQuery();
+    $query1->entityCondition('entity_type', 'node')
+      ->entityCondition('bundle', 'bsf_semester_akademik')
+      ->propertyCondition('status', 1)
+      ->fieldCondition('field_bsf_semester','value',$sta_semester,'=')
+      ->fieldCondition('field_bsf_tahun','value',$sta_tahun,'=');
+    $result1 = $query1->execute();
+    $sta_nid = array_keys($result1['node']);
+    
+    $query2 = new EntityFieldQuery();
+    $query2->entityCondition('entity_type', 'node')
+      ->entityCondition('bundle', 'bsf_mahasiswa')
+      ->propertyCondition('status', 1)
+      ->fieldCondition('field_bsf_big_id','value',$big_id,'=');
+    $result2 = $query2->execute();
+    $mahasiswa_nid = array_keys($result2['node']);
+    
+    $query3 = new EntityFieldQuery();
+    $query3->entityCondition('entity_type', 'node')
+      ->entityCondition('bundle', 'bsf_keuangan')
+      ->propertyCondition('status', 1)
+      ->fieldCondition('field_bsf_mahasiswa','target_id',$mahasiswa_nid[0],'=')
+      ->fieldCondition('field_bsf_semester_akademik','target_id',$sta_nid[0],'=');
+    $result3 = $query3->execute();
+    $keuangan_nid = array_keys($result3['node']);
+    $keuangan_node = node_load($keuangan_nid[0]);
+   
+    return $keuangan_node;
+}
+
+function _retrieve_access(){
+    return TRUE;
+}
+//
+//function finance_service_page_alter(&$page){
+//    _get_keuangan_by_bigid_sta(123,"1301");
+//}
+
+function finance_service_default_services_endpoint() {
+  $export = array();
+
+  // Exported
+    $endpoint = new stdClass();
+    $endpoint->disabled = FALSE; /* Edit this to true to make a default endpoint disabled initially */
+    $endpoint->api_version = 3;
+    $endpoint->name = 'finance_service';
+    $endpoint->server = 'rest_server';
+    $endpoint->path = 'keuangan-service';
+    $endpoint->authentication = array();
+    $endpoint->server_settings = array();
+    $endpoint->resources = array(
+        'keuangan' => array(
+            'actions' => array(
+              'getKeuanganByBigIdSta' => array(
+                'enabled' => '1',
+              ),
+            ),
+        ),
+    );
+    $endpoint->debug = 0;
+
+  // End
+
+  $export[] = $endpoint;
+ 
+  return $export;
+}
+
+
+/**
+ * Implements hook_ctools_plugin_api().
+ */
+function finance_service_ctools_plugin_api($module, $api) {
+  if ($module == 'services' && $api == 'services') {
+    return array(
+      'version' => 3,
+//      'file' => 'ap_kelas.services.inc', // Optional parameter to indicate the file name to load.
+//      'path' => drupal_get_path('module', 'ap_kelas'),
+    );
+  }
+}

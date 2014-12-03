@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the BSF Keuangan feature.
+ */
+
+include_once 'bsf_keuangan.features.inc';

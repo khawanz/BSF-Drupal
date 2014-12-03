@@ -1,0 +1,418 @@
+<?php
+
+// Admin user for content creator
+define('BIG_SYNC_BIG_ADMIN_USER_ID', 2);
+
+// Department related
+define('BIG_SYNC_CONTENT_DEPARTMENT_NAME', 'bsf_program_studi');
+
+// Program related
+define('BIG_SYNC_CONTENT_PROGRAM_NAME', 'bsf_program_kuliah');
+
+// Class related
+define('BIG_SYNC_CONTENT_CLASS_NAME', 'bsf_angkatan');
+
+// StudentTypes related
+define('BIG_SYNC_CONTENT_STUDENT_TYPE_NAME', 'bsf_pembiayaan');
+
+// Semesters related
+define('BIG_SYNC_CONTENT_SEMESTER_NAME', 'bsf_semester_akademik');
+
+// Students related
+define('BIG_SYNC_CONTENT_STUDENT_NAME', 'bsf_mahasiswa');
+
+// Shared fields
+define('BIG_SYNC_FIELD_BIG_ID_NAME', 'field_bsf_big_id');
+
+function big_sync_menu() {
+    
+    $items['admin/big'] = array(
+        'title' => 'BIG Administration',
+        'page callback' => 'big_sync_departments',
+        'access arguments' => array('administer site configuration'),
+        'weight' => 100
+    );
+    
+    $items['admin/big/sync'] = array(
+        'title' => 'Synchronization',
+        'page callback' => 'big_sync_departments',
+        'access arguments' => array('administer site configuration'),
+        'type' => MENU_NORMAL_ITEM
+    );
+    
+    $items['admin/big/sync/faculties'] = array(
+        'title' => '01. Faculties',
+        'page callback' => 'big_sync_departments',
+        'access arguments' => array('administer site configuration'),
+        'type' => MENU_NORMAL_ITEM
+    );
+    
+    $items['admin/big/sync/departments'] = array(
+        'title' => '02. Departments',
+        'page callback' => 'big_sync_departments',
+        'access arguments' => array('administer site configuration'),
+        'type' => MENU_NORMAL_ITEM
+    );
+    
+    $items['admin/big/sync/programs'] = array(
+        'title' => '03. Programs',
+        'page callback' => 'big_sync_programs',
+        'access arguments' => array('administer site configuration'),
+        'type' => MENU_NORMAL_ITEM
+    );
+    
+    $items['admin/big/sync/classes'] = array(
+        'title' => '04. Classes',
+        'page callback' => 'big_sync_classes',
+        'access arguments' => array('administer site configuration'),
+        'type' => MENU_NORMAL_ITEM
+    );
+    
+    $items['admin/big/sync/student_types'] = array(
+        'title' => '05. Student Types',
+        'page callback' => 'big_sync_student_types',
+        'access arguments' => array('administer site configuration'),
+        'type' => MENU_NORMAL_ITEM
+    );
+    
+    $items['admin/big/sync/semesters'] = array(
+        'title' => '06. Semesters',
+        'page callback' => 'big_sync_semesters',
+        'access arguments' => array('administer site configuration'),
+        'type' => MENU_NORMAL_ITEM
+    );
+    
+    $items['admin/big/sync/students'] = array(
+        'title' => '07. Students',
+        'page callback' => 'big_sync_students',
+        'access arguments' => array('administer site configuration'),
+        'type' => MENU_NORMAL_ITEM
+    );
+    
+    return $items;
+}
+
+function big_sync_departments() {
+    include_once drupal_get_path('module', 'big_sync') . '/lib/Big/BigAccess.inc';
+    
+    // Get Drupal Departments
+    $result = db_select('field_data_'.BIG_SYNC_FIELD_BIG_ID_NAME, 'f')
+        ->fields('f', array('entity_id', BIG_SYNC_FIELD_BIG_ID_NAME.'_value'))
+        ->condition('entity_type', 'node')
+        ->condition('bundle', BIG_SYNC_CONTENT_DEPARTMENT_NAME)
+        ->execute()
+        ->fetchAllKeyed();
+    $dru_departments = array_values($result);
+    
+    // Get BIG Departments
+    $big_departements = BigAccess::getDepartments();
+    
+    // Generate Nodes
+    foreach($big_departements as $departement) {
+        // We're only creating non-existent Departments
+        if(!in_array($departement->cat_id, $dru_departments)) {
+            $node = new stdClass();
+            $node->type = BIG_SYNC_CONTENT_DEPARTMENT_NAME;
+            $node->title = ucwords(strtolower($departement->sx_deskripsi.' '.$departement->cat_name));
+            $node->language = LANGUAGE_NONE;
+            node_object_prepare($node);
+            
+            $node->uid = BIG_SYNC_BIG_ADMIN_USER_ID;
+            $node->{BIG_SYNC_FIELD_BIG_ID_NAME}[LANGUAGE_NONE][0]['value'] = $departement->cat_id;
+            $node->status = 1;
+            
+            $node = node_submit($node);
+            node_save($node);
+        }
+    }
+    
+    return 'Departments Synchronization is complete.';
+}
+
+function big_sync_programs() {
+    include_once drupal_get_path('module', 'big_sync') . '/lib/Big/BigAccess.inc';
+    
+    // Get Drupal Programs
+    $result = db_select('field_data_'.BIG_SYNC_FIELD_BIG_ID_NAME, 'f')
+        ->fields('f', array('entity_id', BIG_SYNC_FIELD_BIG_ID_NAME.'_value'))
+        ->condition('entity_type', 'node')
+        ->condition('bundle', BIG_SYNC_CONTENT_PROGRAM_NAME)
+        ->execute()
+        ->fetchAllKeyed();
+    $dru_programs = array_values($result);
+    
+    // Get BIG Programs
+    $big_programs = BigAccess::getPrograms();
+    
+    // Generate Nodes
+    foreach($big_programs as $program) {
+        // We're only creating non-existent Programs
+        if(!in_array($program->pk_id_program_kuliah, $dru_programs)) {
+            $node = new stdClass();
+            $node->type = BIG_SYNC_CONTENT_PROGRAM_NAME;
+            $node->title = ucwords(strtolower($program->sx_deskripsi.' '.$program->cat_name.' - '.$program->pk_nama_program));
+            $node->language = LANGUAGE_NONE;
+            node_object_prepare($node);
+            
+            // Get Department
+            $department = db_select('field_data_'.BIG_SYNC_FIELD_BIG_ID_NAME, 'f')
+                ->fields('f', array('entity_id', BIG_SYNC_FIELD_BIG_ID_NAME.'_value'))
+                ->condition('entity_type', 'node')
+                ->condition('bundle', BIG_SYNC_CONTENT_DEPARTMENT_NAME)
+                ->condition(BIG_SYNC_FIELD_BIG_ID_NAME.'_value', (int)$program->cat_id)
+                ->execute()
+                ->fetchObject();
+            
+            // Only insert qualified Program!
+            if($department) {
+                $node->uid = BIG_SYNC_BIG_ADMIN_USER_ID;
+                $node->{'field_'.BIG_SYNC_CONTENT_DEPARTMENT_NAME}[LANGUAGE_NONE][0] = array (
+                    'target_id' => $department->entity_id,
+                    'target_type' => 'node'
+                );
+
+                $node->{BIG_SYNC_FIELD_BIG_ID_NAME}[LANGUAGE_NONE][0]['value'] = $program->pk_id_program_kuliah;
+                $node->status = 1;
+
+                $node = node_submit($node);
+                node_save($node);
+            }
+        }
+    }
+    
+    return 'Programs Synchronization is complete.';
+}
+
+// Angkatan
+function big_sync_classes() {
+    include_once drupal_get_path('module', 'big_sync') . '/lib/Big/BigAccess.inc';
+    
+    // Get Drupal Classes
+    $result = db_select('field_data_'.BIG_SYNC_FIELD_BIG_ID_NAME, 'f')
+        ->fields('f', array('entity_id', BIG_SYNC_FIELD_BIG_ID_NAME.'_value'))
+        ->condition('entity_type', 'node')
+        ->condition('bundle', BIG_SYNC_CONTENT_CLASS_NAME)
+        ->execute()
+        ->fetchAllKeyed();
+    $dru_classes = array_values($result);
+    
+    // Get BIG Classes
+    $big_classes = BigAccess::getClasses();
+    
+    // Generate Nodes
+    foreach($big_classes as $class) {
+        // We're only creating non-existent Classes
+        if(!in_array($class->id_kelompok_mahasiswa, $dru_classes)) {
+            $node = new stdClass();
+            $node->type = BIG_SYNC_CONTENT_CLASS_NAME;
+            $node->title = ucwords(strtolower($class->nama_kelompok));
+            $node->language = LANGUAGE_NONE;
+            node_object_prepare($node);
+            
+            $node->uid = BIG_SYNC_BIG_ADMIN_USER_ID;
+            $node->{BIG_SYNC_FIELD_BIG_ID_NAME}[LANGUAGE_NONE][0]['value'] = $class->id_kelompok_mahasiswa;
+            $node->status = 1;
+
+            $node = node_submit($node);
+            node_save($node);
+        }
+    }
+    
+    return 'Classes Synchronization is complete.';
+}
+
+// Pembiayaan
+function big_sync_student_types() {
+    include_once drupal_get_path('module', 'big_sync') . '/lib/Big/BigAccess.inc';
+    
+    // Get Drupal Student Types
+    $result = db_select('field_data_'.BIG_SYNC_FIELD_BIG_ID_NAME, 'f')
+        ->fields('f', array('entity_id', BIG_SYNC_FIELD_BIG_ID_NAME.'_value'))
+        ->condition('entity_type', 'node')
+        ->condition('bundle', BIG_SYNC_CONTENT_STUDENT_TYPE_NAME)
+        ->execute()
+        ->fetchAllKeyed();
+    $dru_student_types = array_values($result);
+    
+    // Get BIG Classes
+    $big_student_types = BigAccess::getStudentTypes();
+    
+    // Generate Nodes
+    foreach($big_student_types as $student_type) {
+        // We're only creating non-existent Student Type
+        if(!in_array($student_type->id, $dru_student_types)) {
+            $node = new stdClass();
+            $node->type = BIG_SYNC_CONTENT_STUDENT_TYPE_NAME;
+            $node->title = ucwords(strtolower($student_type->nama));
+            $node->language = LANGUAGE_NONE;
+            node_object_prepare($node);
+            
+            $node->uid = BIG_SYNC_BIG_ADMIN_USER_ID;
+            $node->{BIG_SYNC_FIELD_BIG_ID_NAME}[LANGUAGE_NONE][0]['value'] = $student_type->id;
+            $node->status = 1;
+
+            $node = node_submit($node);
+            node_save($node);
+        }
+    }
+    
+    return 'Student Types Synchronization is complete.';
+}
+
+function big_sync_students() {
+    include_once drupal_get_path('module', 'big_sync') . '/lib/Big/BigAccess.inc';
+    
+    // Get Drupal Departments with BIG_ID as Key for reference in Student Node creation
+    $dru_departments = db_select('field_data_'.BIG_SYNC_FIELD_BIG_ID_NAME, 'f')
+            ->fields('f', array(BIG_SYNC_FIELD_BIG_ID_NAME.'_value', 'entity_id'))
+            ->condition('entity_type', 'node')
+            ->condition('bundle', BIG_SYNC_CONTENT_DEPARTMENT_NAME)
+            ->execute()
+            ->fetchAllKeyed();
+    
+    // Get Drupal Programs with BIG_ID as Key for reference in Student Node creation
+    $dru_programs = db_select('field_data_'.BIG_SYNC_FIELD_BIG_ID_NAME, 'f')
+            ->fields('f', array(BIG_SYNC_FIELD_BIG_ID_NAME.'_value', 'entity_id'))
+            ->condition('entity_type', 'node')
+            ->condition('bundle', BIG_SYNC_CONTENT_PROGRAM_NAME)
+            ->execute()
+            ->fetchAllKeyed();
+    
+    // Get Drupal Classes with BIG_ID as Key for reference in Student Node creation
+    $dru_classes = db_select('field_data_'.BIG_SYNC_FIELD_BIG_ID_NAME, 'f')
+            ->fields('f', array(BIG_SYNC_FIELD_BIG_ID_NAME.'_value', 'entity_id'))
+            ->condition('entity_type', 'node')
+            ->condition('bundle', BIG_SYNC_CONTENT_CLASS_NAME)
+            ->execute()
+            ->fetchAllKeyed();
+    
+    // Get Drupal Student Types with BIG_ID as Key for reference in Student Node creation
+    $dru_student_types = db_select('field_data_'.BIG_SYNC_FIELD_BIG_ID_NAME, 'f')
+            ->fields('f', array(BIG_SYNC_FIELD_BIG_ID_NAME.'_value', 'entity_id'))
+            ->condition('entity_type', 'node')
+            ->condition('bundle', BIG_SYNC_CONTENT_STUDENT_TYPE_NAME)
+            ->execute()
+            ->fetchAllKeyed();
+    
+    // Get Drupal Last Student (for performance issue, we dont get all students (which will be compared with BIG)
+    $last_student = db_select('field_data_'.BIG_SYNC_FIELD_BIG_ID_NAME, 'f')
+            ->fields('f', array('entity_id', BIG_SYNC_FIELD_BIG_ID_NAME.'_value'))
+            ->condition('entity_type', 'node')
+            ->condition('bundle', BIG_SYNC_CONTENT_STUDENT_NAME)
+            ->orderBy(BIG_SYNC_FIELD_BIG_ID_NAME.'_value', 'DESC')
+            ->range(0, 1)
+            ->execute()
+            ->fetchAllKeyed();
+    
+    // Strip out the key
+    $dru_last_student = array_values($last_student);
+    
+    // Get BIG Students which are not in Drupal yet
+    $big_students = BigAccess::getStudents($dru_last_student[0]);
+    
+    // Generate Nodes
+    foreach($big_students as $student) {
+        $node = new stdClass();
+        $node->type = BIG_SYNC_CONTENT_STUDENT_NAME;
+        $node->title = $student->m_nim.' - '.ucwords(strtolower($student->m_nama));
+        $node->language = LANGUAGE_NONE;
+        node_object_prepare($node);
+
+        $node->uid = BIG_SYNC_BIG_ADMIN_USER_ID;
+        
+        $node->field_bsf_nim[LANGUAGE_NONE][0]['value'] = $student->m_nim;
+        $node->field_bsf_nama[LANGUAGE_NONE][0]['value'] = ucwords(strtolower($student->m_nama));
+        
+        // Link Department
+        $node->{'field_'.BIG_SYNC_CONTENT_DEPARTMENT_NAME}[LANGUAGE_NONE][0] = array (
+            'target_id' => $dru_departments[$student->scat_course_category],
+            'target_type' => 'node'
+        );
+        
+        // Link Program
+        $node->{'field_'.BIG_SYNC_CONTENT_PROGRAM_NAME}[LANGUAGE_NONE][0] = array (
+            'target_id' => $dru_programs[$student->scat_program_kuliah],
+            'target_type' => 'node'
+        );
+        
+        // Link Class
+        $node->{'field_'.BIG_SYNC_CONTENT_CLASS_NAME}[LANGUAGE_NONE][0] = array (
+            'target_id' => $dru_classes[$student->m_kelompok_mahasiswa],
+            'target_type' => 'node'
+        );
+        
+        // Link Student Type
+        $node->{'field_'.BIG_SYNC_CONTENT_STUDENT_TYPE_NAME}[LANGUAGE_NONE][0] = array (
+            'target_id' => $student->m_tipe_mahasiswa ? $dru_student_types[$student->m_tipe_mahasiswa] : $dru_student_types[1],
+            'target_type' => 'node'
+        );
+
+        $node->{BIG_SYNC_FIELD_BIG_ID_NAME}[LANGUAGE_NONE][0]['value'] = $student->m_pn_uid;
+        $node->status = 1;
+
+        $node = node_submit($node);
+        node_save($node);
+    }
+    
+    return 'Students Synchronization is complete.';
+}
+
+function big_sync_semesters() {
+    include_once drupal_get_path('module', 'big_sync') . '/lib/Big/BigAccess.inc';
+    
+    $last_year = db_select('field_data_field_bsf_tahun', 'f')
+            ->fields('f', array('entity_id', 'field_bsf_tahun_value'))
+            ->condition('entity_type', 'node')
+            ->condition('bundle', BIG_SYNC_CONTENT_SEMESTER_NAME)
+            ->orderBy('field_bsf_tahun_value', 'DESC')
+            ->range(0, 1)
+            ->execute()
+            ->fetchAllKeyed();
+    
+    // Strip out the key
+    $dru_last_year = array_values($last_year);
+    
+    // Get BIG Semester Tahun Akademik
+    $big_stas = BigAccess::getSemesterYears($dru_last_year[0]);
+    
+    // Generate Nodes
+    foreach($big_stas as $sta) {
+        $next_year = (int)$sta->sta_tahun_ajaran+1;
+        
+        // Ganjil
+        $node_ganjil = new stdClass();
+        $node_ganjil->type = BIG_SYNC_CONTENT_SEMESTER_NAME;
+        $node_ganjil->title = "GANJIL {$sta->sta_tahun_ajaran}/{$next_year}";
+        $node_ganjil->language = LANGUAGE_NONE;
+        node_object_prepare($node_ganjil);
+
+        $node_ganjil->uid = BIG_SYNC_BIG_ADMIN_USER_ID;
+        
+        $node_ganjil->field_bsf_semester[LANGUAGE_NONE][0]['value'] = 1;
+        $node_ganjil->field_bsf_tahun[LANGUAGE_NONE][0]['value'] = $sta->sta_tahun_ajaran;
+        
+        $node_ganjil->status = 1;
+
+        $node_ganjil = node_submit($node_ganjil);
+        node_save($node_ganjil);
+        
+        // Genap
+        $node_genap = new stdClass();
+        $node_genap->type = BIG_SYNC_CONTENT_SEMESTER_NAME;
+        $node_genap->title = "GENAP {$sta->sta_tahun_ajaran}/{$next_year}";
+        $node_genap->language = LANGUAGE_NONE;
+        node_object_prepare($node_genap);
+
+        $node_genap->uid = BIG_SYNC_BIG_ADMIN_USER_ID;
+        
+        $node_genap->field_bsf_semester[LANGUAGE_NONE][0]['value'] = 2;
+        $node_genap->field_bsf_tahun[LANGUAGE_NONE][0]['value'] = $sta->sta_tahun_ajaran;
+        
+        $node_genap->status = 1;
+
+        $node_genap = node_submit($node_genap);
+        node_save($node_genap);
+    }
+    
+    return 'Semesters Synchronization is complete.';
+}

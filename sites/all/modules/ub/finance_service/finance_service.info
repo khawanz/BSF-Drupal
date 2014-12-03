@@ -1,0 +1,6 @@
+name = Finance Service
+description = Menyediakan layanan (web service) keuangan agar bisa diakses dari luar sistem
+core = 7.x
+package = Service
+dependencies[] = services
+dependencies[] = rest_server

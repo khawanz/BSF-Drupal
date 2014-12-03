@@ -1,0 +1,131 @@
+<?php
+
+function input_display_permission(){
+    return array(  
+        'access edit email user' => array(
+          'title' => 'Akses Menu Edit Email User',
+          'description' => 'Mengizinkan user mengakses menu edit user',
+        ),
+        
+        'access approval-krs-uts-uas staff' => array(
+          'title' => 'Akses Approval KRS UTS UAS Untuk Staf',
+          'description' => 'Mengizinkan user menyetujui mahasiswa untuk KRS/UTS/UAS bagian Staff',
+        ),
+        
+        'access approval-krs-uts-uas manager' => array(
+          'title' => 'Akses Approval KRS UTS UAS Untuk Manager',
+          'description' => 'Mengizinkan user menyetujui mahasiswa untuk KRS/UTS/UAS bagian Manager',
+        ),
+        
+        'access approval-krs-uts-uas admin' => array(
+          'title' => 'Akses Approval KRS UTS UAS Untuk Admin',
+          'description' => 'Mengizinkan user menyetujui mahasiswa untuk KRS/UTS/UAS bagian Admin',
+        ),
+        
+        'access input-pembayaran' => array(
+          'title' => 'Akses Menu Input Pembayaran',
+          'description' => 'Mengizinkan user mengakses menu input pembayaran',
+        ),
+        
+        'access input-pembayaran laporan' => array(
+          'title' => 'Akses Menu Laporan Pembayaran',
+          'description' => 'Mengizinkan user mengakses menu Laporan pembayaran',
+        )
+     );
+}
+
+function input_display_menu(){
+    $menu = array();
+    
+    $menu['input-pembayaran'] = array(
+        'title' => 'Input Pembayaran',
+        'description' => t('Input data pembayaran mahasiswa'),
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('input_pembayaran_form'),
+        'access arguments' => array('access input-pembayaran'),
+        'file' => 'input_pembayaran_form.inc',
+        'file path' => drupal_get_path('module','input_display').'/forms',
+    );
+    
+    $menu['laporan-pembayaran'] = array(
+        'title' => 'Laporan Pembayaran',
+        'description' => t('Input data pembayaran mahasiswa'),
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('laporan_pembayaran_form'),
+        'access arguments' => array('access input-pembayaran laporan'),
+        'file' => 'laporan_pembayaran_form.inc',
+        'file path' => drupal_get_path('module','input_display').'/forms',
+    );
+    
+    $menu['input-pembayaran/print'] = array(
+//        'title' => 'Print Input Pembayaran',
+//        'description' => t('Input data pembayaran mahasiswa'),
+        'page callback' => 'input_pembayaran_print',
+        //'page arguments' => array('input_pembayaran_form'),
+        'access arguments' => array('access input-pembayaran'),
+        'file' => 'display_pembayaran_print.inc',
+        'file path' => drupal_get_path('module','input_display').'/forms',
+        'type' => MENU_CALLBACK
+    );
+    
+    $menu['laporan-pembayaran/print'] = array(
+//        'title' => 'Print Laporan Pembayaran',
+//        'description' => t('Input data pembayaran mahasiswa'),
+        'page callback' => 'laporan_pembayaran_print',
+        //'page arguments' => array('input_pembayaran_form'),
+        'access arguments' => array('access input-pembayaran'),
+        'file' => 'display_pembayaran_print.inc',
+        'file path' => drupal_get_path('module','input_display').'/forms',
+        'type' => MENU_CALLBACK
+    );
+    
+//    $menu['input-pembayaran/laporan'] = array(
+//        'title' => t('Laporan Pembayaran'),
+//        'page callback' => 'views_page',
+//        'page arguments' => array('view_laporan_pembayaran'),
+//        'file' => 'views.module',
+//        'file path' => drupal_get_path('module', 'views'),
+//        'access arguments' => array('access input-pembayaran laporan'),
+//        'weight' => 30,
+//      );
+    
+    $menu['input-pembayaran/ajax-semester-callback'] = array(
+        'page callback' => 'input_pembayaran_semester_callback',
+        'file' => 'input_pembayaran_form.inc',
+        'file path' => drupal_get_path('module', 'input_display').'/forms',
+        'type' => MENU_CALLBACK,
+        'access arguments' => array('access input-pembayaran'),
+    );
+    return $menu;
+}
+
+
+function input_display_theme(){
+    return array(
+        'input_pembayaran_form' => array(
+            'render element' => 'form',
+        ),
+        
+        'laporan_pembayaran_form' => array(
+            'render element' => 'form',
+        )
+    );
+}
+
+/**
+ * Implements hook_views_api().
+ */
+function input_display_views_api($module = NULL, $api = NULL) {
+  return array(
+      "api" => "3.0",
+      "path" => drupal_get_path('module', 'input_display').'/views');
+}
+
+//disable 'edit email' untuk user bukan admin
+function input_display_form_alter(&$form,&$form_state,$form_id){
+    
+    if($form_id == 'user_profile_form' AND
+            !user_access('access edit email user')){      
+        $form['account']['mail']['#attributes']['readonly'] = TRUE;
+    }
+}
